@@ -334,12 +334,10 @@ class MainWindow(QtWidgets.QMainWindow):
             result = False
             wb = None
 
-            start_time = time.time()
-            result, wb = start_helper()
-            LOGGER.info('Running Time: ' + str(time.time() - start_time) + 'S')
-
             try:
-                pass
+                start_time = time.time()
+                result, wb = start_helper()
+                LOGGER.info('Running Time: ' + str(time.time() - start_time) + 'S')
             except Exception:
                 LOGGER.critical(msg='Unknown Error', stack_info=traceback.format_exc())
                 show_critical_dialog(

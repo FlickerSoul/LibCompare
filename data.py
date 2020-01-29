@@ -11,6 +11,7 @@ from functools import partial
 import openpyxl
 from openpyxl import styles
 from main import LOGGER, show_critical_dialog, show_warning_dialog
+from collections import namedtuple
 
 
 NORMALIZE_PATTERN = partial(normalize, 'NFC')
@@ -22,6 +23,7 @@ class CellSet:
     EQUAL = 2
     AMBIGUOUS = 1
     NOT_EQUAL = 0
+    FINAL_RESULT = namedtuple('final', 'cell code')
 
     @staticmethod
     def process_data(cell_content: str) -> str:
@@ -52,7 +54,7 @@ class CellSet:
 
     def init_as_comparing_cell(self):
         self.possible_set = {}
-        self.final = ColSet.EMPTY_CELL, CellSet.NOT_EQUAL         # Cell:result_code
+        self.final = CellSet.FINAL_RESULT(ColSet.EMPTY_CELL, CellSet.NOT_EQUAL)         # Cell:result_code
         return self
 
     def is_eq(self, other):
@@ -87,14 +89,14 @@ class CellSet:
     def finalize(self):
         for key, value in self.possible_set.items():
             if value == CellSet.EQUAL:
-                self.final = key, value
+                self.final = CellSet.FINAL_RESULT(key, value)
                 return
 
-            if len(key.cell_content) > len(self.final[0].cell_content):
-                self.final = key, value                            # the longer the data more detailed?
+            if len(key.cell_content) > len(self.final.cell.cell_content):
+                self.final = CellSet.FINAL_RESULT(key, value)               # the longer the data more detailed?
 
     def is_not_acceptable(self):
-        return not self.final[1]
+        return not self.final.code
 
     def __eq__(self, other):
         return self.hash_id == other.hash_id
@@ -433,14 +435,14 @@ class WorkBookWrapper:
                                    value=cell.id)
             # match status
             result_sheet.cell(row=result_counter, column=WorkBookWrapper.RESULT_STATUS_COl).fill = \
-                                   openpyxl.styles.PatternFill(fgColor=self.get_matched_color(cell.final[1]),
+                                   openpyxl.styles.PatternFill(fgColor=self.get_matched_color(cell.final.code),
                                                                fill_type='solid')
             # publisher's title processed
             result_sheet.cell(row=result_counter, column=WorkBookWrapper.RESULT_PUB_PRSD_TITLE_COL,
                                    value=cell.processed_data)
-            if cell.final[1]:
+            if cell.final.code:
                 # get target title from our lib
-                target = cell.final[0]
+                target = cell.final.cell
                 lib_col.record_matched(target)
                 # matched title
                 result_sheet.cell(row=result_counter, column=WorkBookWrapper.RESULT_MATCHED_TITLE_COL,
